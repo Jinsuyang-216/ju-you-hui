@@ -1,0 +1,9 @@
+{
+  "name": "ju-you-hui-backend",
+  "version": "1.0.6",
+  "description": "聚优惠本地后端（双模 fallback，零依赖）",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  }
+}

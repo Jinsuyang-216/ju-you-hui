@@ -1,0 +1,15 @@
+# ===== 聚优惠 .gitignore =====
+
+# 本地调试/诊断脚本（含真实 Key，绝不提交）
+_*.js
+
+# 早期探索残留（非发布版，保留本地不提交）
+clis/
+config/
+_archive_*/
+
+# 依赖与系统文件
+node_modules/
+.DS_Store
+*.log
+Thumbs.db
