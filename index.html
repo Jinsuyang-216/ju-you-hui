@@ -225,7 +225,7 @@
     <div class="badges">
       <span class="pill gh">GitHub ★</span>
       <span class="pill live"><span class="dot"></span>实时核验</span>
-      <span class="pill" style="background:#6366f1;color:#fff">v1.0.4</span>
+      <span class="pill" style="background:#6366f1;color:#fff">v1.0.7</span>
       <span class="pill" id="modeBadge" style="background:#ff5a1f;color:#fff">● 纯前端</span>
     </div>
   </div>
@@ -245,9 +245,6 @@
         <span class="cur" id="regionCur">成都市</span>
         <span class="caret">▾</span>
       </div>
-      <label class="field"><span class="ic">🔍</span>
-        <input id="kw" placeholder="想找啥优惠？如：火锅、奶茶、加油" />
-      </label>
       <button class="btn" id="go">搜优惠</button>
       <div class="dev-wrap">
         <button class="btn-ghost" id="devBtn">⚙️ 开发者 ▾</button>
@@ -415,7 +412,7 @@ const PROVINCES = Object.keys(REGION_DATA);
 const HOT_CITIES = ["北京市","上海市","广州市","深圳市","成都市","杭州市","武汉市","西安市","重庆市","苏州市","南京市","天津市"];
 
 const CATEGORIES=[
-  {name:"餐饮美食"},{name:"饮品"},{name:"电影演出"},{name:"KTV"},{name:"生活出行"},
+  {name:"餐饮美食"},{name:"饮品"},{name:"电影演出"},{name:"KTV"},{name:"出行加油"},
   {name:"购物"},{name:"生活服务"},{name:"教育健康"},{name:"数字权益"}
 ];
 
@@ -436,15 +433,14 @@ const TERM_SYNONYMS={
   "酒店":["酒店","宾馆","住宿","民宿"],
   "电影演出":["电影","影院","电影票","演出","话剧","演唱会","音乐剧"],
   "餐饮美食":["餐饮","美食","餐厅","饭店","火锅","烧烤","小吃","外卖"],
-  "生活出行":["出行","打车","滴滴","加油","加油站","停车","洗车","充电"],
+  "出行加油":["加油","加油站","出行","打车","滴滴","停车","洗车","充电"],
   "购物":["购物","电商","京东","淘宝","天猫","拼多多","超市","百货"],
   "生活服务":["生活","家政","维修","洗衣","美容","美发","美甲","健身","按摩"],
   "教育健康":["教育","培训","课程","体检","口腔","齿科","健康","医疗","健身"]
 };
-/* 解析当前搜索主词：优先搜索框关键词，其次选中类别 */
+/* 解析当前搜索主词：搜索词完全由品类按钮决定（输入框已移除） */
 function resolveTerm(){
-  const kw=($("#kw")&&$("#kw").value||"").trim();
-  return kw||state.category||"餐饮美食";
+  return state.category||"餐饮美食";
 }
 /* 取搜索词的同义关键词组（用于查询扩展 + 后置过滤） */
 function termKeywords(term){
@@ -504,25 +500,25 @@ const E=encodeURIComponent;
      · fallback:true → 仅当「地区+品种」主搜结果不足时补充（全国可享，不主动扩大范围）
    核心原则：用户选定地区+品种后，检索范围就是「该地区+该品种」的各类电商/银行/云闪付/聚合优惠。 */
 const DEFAULT_SOURCES=[
-  /* ===== 默认启用：地区+品种 主搜 ===== */
-  {id:"local",  name:"本地优惠",   cat:"本地生活", on:true,  type:"search", q:c=>`${c.area} ${c.product} 优惠券 团购 代金券 到店`},
-  {id:"bank",   name:"银行信用卡", cat:"银行支付", on:true,  type:"search", q:c=>`招商银行 工商银行 建设银行 农业银行 ${c.city} ${c.product} 信用卡优惠 活动`},
-  {id:"unionpay",name:"云闪付",    cat:"银行支付", on:true,  type:"search", q:c=>`云闪付 ${c.city} ${c.product} 优惠 活动`},
-  {id:"smzdm",  name:"什么值得买", cat:"优惠聚合", on:true,  type:"search", q:c=>`${c.product} 优惠券 代金券 满减 特价`},
-  {id:"meituan",name:"美团团购",   cat:"本地生活", on:true,  type:"search", q:c=>`${c.area} 美团 ${c.product} 团购 代金券`},
-  {id:"douyin", name:"抖音团购",   cat:"本地生活", on:true,  type:"search", q:c=>`${c.area} 抖音 ${c.product} 团购 优惠 到店`},
-  {id:"dianping",name:"大众点评",  cat:"本地生活", on:true,  type:"search", q:c=>`${c.area} 大众点评 ${c.product} 优惠 团购`},
-  {id:"eleme",  name:"饿了么",     cat:"本地生活", on:true,  type:"search", q:c=>`${c.area} 饿了么 ${c.product} 红包 优惠`},
-  {id:"jd",     name:"京东",       cat:"电商",     on:true,  type:"search", q:c=>`${c.product} 京东 优惠券 满减`},
-  {id:"taobao", name:"淘宝",       cat:"电商",     on:true,  type:"search", q:c=>`${c.product} 淘宝 优惠券 代金券`},
-  {id:"pdd",    name:"拼多多",     cat:"电商",     on:true,  type:"search", q:c=>`${c.product} 拼多多 优惠券 砍价`},
-  {id:"tmall",  name:"天猫",       cat:"电商",     on:true,  type:"search", q:c=>`${c.product} 天猫 优惠券`},
-  {id:"didi",   name:"滴滴出行",   cat:"出行",     on:true,  type:"search", q:c=>`${c.city} 滴滴 ${c.product} 优惠券 立减`},
-  {id:"gas",    name:"加油站",     cat:"出行",     on:true,  type:"search", q:c=>`中石化 中石油 ${c.city} 加油站 优惠 充值`},
+  /* ===== 默认启用：地区+品种 主搜（按品类动态排序，命中品类的源优先）===== */
+  {id:"local",  name:"本地优惠",   cat:"通用", on:true,  type:"search", cats:["餐饮","奶茶","火锅","咖啡","饮品","外卖","加油","充电","打车","电影","KTV","酒店","购物","数码","服装","日用"], q:c=>`${c.area} ${c.product} 优惠券 团购 代金券 到店`},
+  {id:"meituan",name:"美团外卖",   cat:"外卖电商", on:true, type:"search", cats:["餐饮","奶茶","火锅","咖啡","饮品","外卖","电影","KTV","小吃","甜品","夜宵"], q:c=>`${c.area} 美团 外卖 ${c.product} 团购 代金券 满减`},
+  {id:"eleme",  name:"饿了么",     cat:"外卖电商", on:true, type:"search", cats:["餐饮","奶茶","火锅","咖啡","饮品","外卖","小吃","甜品","夜宵"], q:c=>`${c.area} 饿了么 ${c.product} 红包 满减 优惠`},
+  {id:"dianping",name:"大众点评",  cat:"外卖电商", on:true, type:"search", cats:["餐饮","奶茶","火锅","咖啡","饮品","外卖","电影","KTV","小吃"], q:c=>`${c.area} 大众点评 ${c.product} 优惠 团购`},
+  {id:"douyin", name:"抖音团购",   cat:"外卖电商", on:true, type:"search", cats:["餐饮","奶茶","火锅","咖啡","饮品","外卖","电影","KTV","小吃","甜品"], q:c=>`${c.area} 抖音 ${c.product} 团购 优惠 到店`},
+  {id:"jd",     name:"京东外卖",   cat:"外卖电商", on:true, type:"search", cats:["餐饮","外卖","夜宵","购物","数码","家电","日用","电商"], q:c=>`${c.area} 京东外卖 ${c.product} 优惠券 满减 团购`},
+  {id:"taobao", name:"淘宝闪送",   cat:"外卖电商", on:true, type:"search", cats:["餐饮","外卖","购物","电商","数码","服装","日用","百货"], q:c=>`${c.area} 淘宝 闪送 ${c.product} 优惠券 代金券`},
+  {id:"pdd",    name:"拼多多",     cat:"电商", on:true,  type:"search", cats:["购物","电商","日用","数码","服装","百货"], q:c=>`${c.product} 拼多多 优惠券 砍价`},
+  {id:"tmall",  name:"天猫",       cat:"电商", on:true,  type:"search", cats:["购物","电商","数码","家电","服装","百货"], q:c=>`${c.product} 天猫 优惠券`},
+  {id:"bank",   name:"银行信用卡", cat:"银行支付", on:true, type:"search", cats:["银行","信用卡","支付","银行支付","云闪付"], q:c=>`招商银行 工商银行 建设银行 农业银行 ${c.city} ${c.product} 信用卡优惠 活动`},
+  {id:"unionpay",name:"云闪付",    cat:"银行支付", on:true, type:"search", cats:["银行","信用卡","支付","云闪付"], q:c=>`云闪付 ${c.city} ${c.product} 优惠 活动`},
+  {id:"gas",    name:"加油站",     cat:"出行", on:true,  type:"search", cats:["加油","充电","出行","洗车"], q:c=>`中石化 中石油 壳牌 ${c.city} 加油站 优惠 充值 油卡`},
+  {id:"didi",   name:"滴滴出行",   cat:"出行", on:true,  type:"search", cats:["打车","出行","加油","充电"], q:c=>`${c.city} 滴滴 ${c.product} 优惠券 立减`},
+  {id:"smzdm",  name:"什么值得买", cat:"优惠聚合", on:true, type:"search", cats:["购物","电商","数码","家电","日用","百货"], q:c=>`${c.product} 优惠券 代金券 满减 特价`},
 
   /* ===== 全国可享（仅当地域结果不足时补充，不主动扩大范围）===== */
-  {id:"nation", name:"全国优惠",   cat:"优惠聚合", on:true,  type:"search", fallback:true, q:c=>`${c.product} 优惠券 代金券 满减 团购`},
-  {id:"xhs",    name:"小红书",     cat:"社交种草", on:false, type:"search", q:c=>`${c.product} 优惠 攻略 小红书`},
+  {id:"nation", name:"全国优惠",   cat:"优惠聚合", on:true,  type:"search", fallback:true, cats:["通用"], q:c=>`${c.product} 优惠券 代金券 满减 团购`},
+  {id:"xhs",    name:"小红书",     cat:"社交种草", on:false, type:"search", cats:["餐饮","购物","旅游","攻略"], q:c=>`${c.product} 优惠 攻略 小红书`},
 ];
 const SRC_KEY="juyouhui_sources_v1";
 function loadSources(){
@@ -549,6 +545,16 @@ function queryPhrase(term){
   const kws=termKeywords(term);
   return kws.slice(0,3).join(" ");
 }
+/* 品类动态排序：用户选的品类命中哪些源，哪些源排最前（选加油→加油站/滴滴优先，选奶茶→美团/饿了么优先，选银行→银行/云闪付优先） */
+function scoreSrc(s,term){
+  let score=0;
+  if(term&&s.cats&&Array.isArray(s.cats)){
+    if(s.cats.includes("通用"))score+=2;                                   // 通用源（本地优惠/全国）兜底分
+    if(s.cats.some(c=>term.includes(c)||c.includes(term)))score+=10;       // 命中品类 → 大幅优先
+  }
+  if(s.fallback)score-=5;                                                  // 全国可享源降级（仅结果不足时补充）
+  return score;
+}
 function buildQueries(){
   const city=state.city||"全国";
   const county=state.county||"";
@@ -556,11 +562,14 @@ function buildQueries(){
   const term=resolveTerm();
   const product=queryPhrase(term);                 // 同义词扩展后的品种词，如「火锅 麻辣烫 串串」
   const ctx={city,county,area,product,term};
-  return getActiveSources().map(s=>{
-    const o={id:s.id,name:s.name,type:s.type||"search",fallback:!!s.fallback};
-    if(s.type==="scrape") o.url=s.url(ctx); else o.query=s.q(ctx);
-    return o;
-  });
+  return getActiveSources()
+    .map(s=>({s,score:scoreSrc(s,term)}))
+    .sort((a,b)=>b.score-a.score)
+    .map(({s})=>{
+      const o={id:s.id,name:s.name,type:s.type||"search",fallback:!!s.fallback};
+      if(s.type==="scrape") o.url=s.url(ctx); else o.query=s.q(ctx);
+      return o;
+    });
 }
 
 let lastCards=[];
@@ -606,29 +615,47 @@ async function fetchTimeout(url,opts={},ms=40000){
     throw e;
   }finally{clearTimeout(t);}
 }
+/* Firecrawl 双模：免 key 免费层优先 → 带 key 付费层备用（额度每月自动恢复，恢复后可增强/补充） */
+async function fcScrapeOnce(url,key){
+  const headers={"Content-Type":"application/json"};
+  if(key)headers["Authorization"]="Bearer "+key;
+  const r=await fetchTimeout("https://api.firecrawl.dev/v1/scrape",{method:"POST",headers,
+    body:JSON.stringify({url,formats:["markdown"],onlyMainContent:false,waitFor:3000})},45000);
+  if(!r.ok){lastApiError={step:'firecrawl-http',status:r.status,url:url.slice(0,60)};return null;}
+  const j=await r.json();
+  return (j.data&&j.data.markdown)||null;
+}
 async function firecrawlScrape(url){
   try{
-    const r=await fetchTimeout("https://api.firecrawl.dev/v1/scrape",{
-      method:"POST",
-      headers:{Authorization:"Bearer "+getFirecrawlKey(),"Content-Type":"application/json"},
-      body:JSON.stringify({url,formats:["markdown"],onlyMainContent:false,waitFor:3000})
-    },45000);
-    if(!r.ok){lastApiError={step:'firecrawl-http',status:r.status,url:url.slice(0,60)};return null;}
-    const j=await r.json();
-    return (j.data&&j.data.markdown)||null;
+    // ① 免 key 免费层（无 key + CORS，浏览器直连可用，限速）
+    let md=await fcScrapeOnce(url,null);
+    if(md&&md.length>200)return md;
+    // ② 带 key 付费层备用（额度恢复后可用）
+    const key=getFirecrawlKey();
+    if(key){md=await fcScrapeOnce(url,key);if(md&&md.length>200)return md;}
+    return null;
   }catch(e){return null;}
+}
+/* Firecrawl 双模：免 key 免费层优先 → 带 key 付费层备用 */
+async function fcSearchOnce(query,key){
+  const headers={"Content-Type":"application/json"};
+  if(key)headers["Authorization"]="Bearer "+key;
+  const r=await fetchTimeout("https://api.firecrawl.dev/v1/search",{method:"POST",headers,
+    body:JSON.stringify({query,limit:50,lang:"zh",country:"CN"})},40000);
+  if(!r.ok){lastApiError={step:'firecrawl-http',status:r.status,url:query.slice(0,60)};return [];}
+  const j=await r.json();
+  return j.data||[];
 }
 /* 真·关键词搜索（Firecrawl /v1/search）：地区+品种 → 返回结构化结果（标题/摘要/链接） */
 async function firecrawlSearch(query){
   try{
-    const r=await fetchTimeout("https://api.firecrawl.dev/v1/search",{
-      method:"POST",
-      headers:{Authorization:"Bearer "+getFirecrawlKey(),"Content-Type":"application/json"},
-      body:JSON.stringify({query,limit:50,lang:"zh",country:"CN"})
-    },40000);
-    if(!r.ok){lastApiError={step:'firecrawl-http',status:r.status,url:query.slice(0,60)};return [];}
-    const j=await r.json();
-    return j.data||[];
+    // ① 免 key 免费层（实测 200 + CORS 允许，浏览器直连可用，限速）
+    let items=await fcSearchOnce(query,null);
+    if(items&&items.length)return items;
+    // ② 带 key 付费层备用（额度每月自动恢复，恢复后可增强/补充）
+    const key=getFirecrawlKey();
+    if(key){items=await fcSearchOnce(query,key);if(items&&items.length)return items;}
+    return [];
   }catch(e){return [];}
 }
 /* 免费层：优惠聚合站直抓（无需API Key） */
@@ -732,18 +759,18 @@ async function runQueryText(q){
       const text = wigoResults.map(r => `标题：${r.title}\n摘要：${r.snippet}\n链接：${r.url}`).join("\n\n");
       return {text, source:q.name, sourceId:q.id, fallback:q.fallback, engine:"wigolo-search"};
     }
-    // 备用①：Bing直抓优惠聚合站（免费）
-    const direct=await bingDirectFetch(q.query);
-    if(direct)return {text:direct.text,source:q.name,sourceId:q.id,fallback:q.fallback,engine:"bing-direct"};
-    // 备用②：AnySearch 云端搜索（免费，匿名可用）
-    const anysearch=await anysearchSearch(q.query);
-    if(anysearch)return {text:anysearch,source:"AnySearch",sourceId:q.id,fallback:q.fallback,engine:"anysearch-search"};
-    // 付费层③：Firecrawl /v1/search（额度耗尽，仅作备用）
+    // 主选②：Firecrawl 免 key 免费层（无 key + CORS 允许，浏览器直连可用，实测 2026-08-13；返回结构化结果）
     const items=await firecrawlSearch(q.query);
     if(items.length){
       const text=items.map(it=>`标题：${it.title||""}\n摘要：${it.description||""}\n链接：${it.url||""}`).join("\n\n");
-      return {text,source:q.name,sourceId:q.id,fallback:q.fallback,engine:"firecrawl-search"};
+      return {text, structured:items, source:q.name, sourceId:q.id, fallback:q.fallback, engine:"firecrawl-search"};
     }
+    // 备用①：Bing直抓优惠聚合站（免费，多数反爬会失败）
+    const direct=await bingDirectFetch(q.query);
+    if(direct)return {text:direct.text,source:q.name,sourceId:q.id,fallback:q.fallback,engine:"bing-direct"};
+    // 备用②：AnySearch 云端搜索（无 CORS 头，浏览器直连会被拦，仅作尝试）
+    const anysearch=await anysearchSearch(q.query);
+    if(anysearch)return {text:anysearch,source:"AnySearch",sourceId:q.id,fallback:q.fallback,engine:"anysearch-search"};
     return null;
   }
   // scrape类型
@@ -764,17 +791,23 @@ async function runQueryText(q){
   const md=await firecrawlScrape(q.url);
   return (md&&md.length>200)?{text:md,source:q.name,sourceId:q.id,fallback:q.fallback,engine:"firecrawl"}:null;
 }
+/* 并发限制工具：最多 limit 个同时执行（Firecrawl 免 key 层限速，全并发必被 429 打崩） */
+async function mapLimit(arr,limit,fn){
+  const out=[];
+  for(let i=0;i<arr.length;i+=limit){
+    out.push(...(await Promise.all(arr.slice(i,i+limit).map(fn))));
+  }
+  return out;
+}
 async function searchDeals(){
   const queries=buildQueries();
   const primary=queries.filter(q=>!q.fallback);
   const fb=queries.filter(q=>q.fallback);
-  // 主搜（地区+品种）并行；结果不足再补全国可享
+  // 纯前端限流：Firecrawl 免 key 层限速，只跑前 6 个关键源 + 每次 2 并发，避免 14 源全并发被 429
   const run=q=>runQueryText(q).then(t=>t?{text:t,source:q.name,sourceId:q.id,fallback:q.fallback}:null);
-  let res=await Promise.all(primary.map(run));
-  res=res.filter(Boolean);
+  let res=(await mapLimit(primary.slice(0,6),2,run)).filter(Boolean);
   if(res.length<3 && fb.length){
-    const fbr=await Promise.all(fb.map(run));
-    res=res.concat(fbr.filter(Boolean));
+    res=res.concat((await mapLimit(fb.slice(0,3),2,run)).filter(Boolean));
   }
   return res;
 }
@@ -972,7 +1005,7 @@ function renderChips(){
     const el=document.createElement("div");
     el.className="chip"+(c.name===state.category?" active":"");
     el.textContent=c.name;
-    el.onclick=()=>{state.category=c.name;/* 不再清空搜索框！用户输入的关键词优先于chip类别 */renderChips();/* 如果搜索框为空才自动触发搜索，有值让用户自己点搜优惠 */const k=$("#kw");if(k&&(!k.value||!k.value.trim()))search();};
+    el.onclick=()=>{state.category=c.name;renderChips();search();};   // 点品类按钮直接搜索（输入框已移除）
     box.appendChild(el);
   });
 }
@@ -1137,21 +1170,82 @@ async function search(){
       return;
     }
   }
-  // —— 前端模式（默认 / 手机端）——
+  // —— 前端模式（默认 / 手机端）：渐进式加载（美团优先，10 秒内必出结果，边加载边出）——
   try{
-    setSearchProgress(`正在并行检索 ${queries.length} 个平台的实时优惠…`);
-    const sources=await searchDeals();
-    if(!sources.length){ throw new Error("no-source"); }
-    setSearchProgress(`已抓取 ${sources.length} 个平台，AI 正在抽取优惠…`);
-    // 并行抽取全部源（按搜索主词过滤）
-    const parts=await Promise.all(sources.map(async s=>{
-      try{ const deals=await agnesExtract(s.text,s.source,term);
-        return verifyDeals(deals,s.source,term); }
-      catch(e){ return []; }
-    }));
-    let raw=parts.reduce((a,b)=>a.concat(b),[]);
-    raw=relevanceFilter(raw,term);   // 后置过滤：杜绝"搜加油出外卖"
-    raw=tagAndSortRegion(raw,city,state.county||"");  // 本地优先排序 + 地域标注
+    const primary=queries.filter(q=>!q.fallback);
+    const fb=queries.filter(q=>q.fallback);
+    // 美团强制第一（用户要求：先定向搜美团，10 秒内必出美团信息）
+    const ordered=[...primary].sort((a,b)=>(a.name==="美团外卖"?-1:b.name==="美团外卖"?1:0)).slice(0,6);
+    setSearchProgress(`正在检索（美团/饿了么优先，10 秒内出结果）…`);
+    const run=q=>runQueryText(q).then(t=>t?{text:t,source:q.name,sourceId:q.id,fallback:q.fallback}:null);
+    let raw=[], rendered=false, aiRendered=false;
+    // 10 秒保底：全部搜索引擎失效时，10 秒后立即用 agnes 兜底（虚拟优惠 + 明确提示；真实结果到了自动替换）
+    const guard=setTimeout(async ()=>{
+      if(!rendered){
+        setSearchProgress("正在生成 AI 参考优惠…");
+        const kb=await agnesKnowledgeGenerate(term);
+        if(kb&&kb.length){
+          const aiDeals=verifyDeals(kb,"AI知识库",term).map(d=>({...d,_aiFallback:true}));
+          if(aiDeals.length){
+            raw=aiDeals;
+            lastCards=raw;render(applySort(raw));afterRender();
+            rendered=true; aiRendered=true;
+            $("#notice").style.display="block";
+            $("#notice").textContent="⚠️ 实时搜索源暂不可用，以下为 AI 生成的参考优惠（非实时数据，请以平台实际为准）。";
+            setSearchProgress("");
+          }
+        }
+      }
+    },10000);
+    // 抽取转换：Firecrawl 结构化直出（无需 LLM）/ 其余走 agnes
+    const convert=async s=>{
+      try{
+        if(s.structured&&s.structured.length){
+          return s.structured.map(it=>({
+            title:(it.title||"").trim().slice(0,60),
+            amount:"",merchant:(it.title||"").trim().slice(0,12),
+            category:term,source:s.source,valid_until:"",
+            link:(it.url||""),address:city,
+            raw_title:(it.title||""),description:(it.description||"").trim().slice(0,120)
+          })).filter(d=>d.title);
+        }
+        const deals=await agnesExtract(s.text,s.source,term);
+        return verifyDeals(deals,s.source,term);
+      }catch(e){ return []; }
+    };
+    // 分批：每批 2 源，跑完立即增量渲染（加载一个出一个）
+    for(let i=0;i<ordered.length;i+=2){
+      const srcs=(await Promise.all(ordered.slice(i,i+2).map(run))).filter(Boolean);
+      if(!srcs.length)continue;
+      const parts=await Promise.all(srcs.map(convert));
+      const realNew=parts.flat();
+      if(realNew.length){
+        raw=raw.filter(d=>!d._aiFallback);   // 真实结果到了，丢弃 AI 兜底
+        raw=raw.concat(realNew);
+      }
+      raw=relevanceFilter(raw,term);
+      raw=tagAndSortRegion(raw,city,state.county||"");
+      if(raw.length){
+        lastCards=raw;render(applySort(raw));afterRender();
+        if(aiRendered){ aiRendered=false; $("#notice").style.display="none"; }
+        rendered=true;
+        setSearchProgress(`已出 ${raw.length} 条结果，继续加载更多平台…`);
+      }
+    }
+    // 本地结果不足 → 补全国可享（同样分批渐进）
+    if(raw.length<3 && fb.length){
+      for(let i=0;i<Math.min(fb.length,3);i+=2){
+        const srcs=(await Promise.all(fb.slice(i,i+2).map(run))).filter(Boolean);
+        if(!srcs.length)continue;
+        const parts=await Promise.all(srcs.map(convert));
+        const realNew=parts.flat();
+        if(realNew.length){ raw=raw.filter(d=>!d._aiFallback); raw=raw.concat(realNew); }
+        raw=relevanceFilter(raw,term);
+        raw=tagAndSortRegion(raw,city,state.county||"");
+        if(raw.length){lastCards=raw;render(applySort(raw));afterRender();if(aiRendered){aiRendered=false;$("#notice").style.display="none";}rendered=true;}
+      }
+    }
+    clearTimeout(guard);
     setSearchProgress("");
     // 距离（用户定位 → BD-09，与商家 BD-09 算距）
     if(state.distOn&&state.lat!=null){
@@ -1163,22 +1257,12 @@ async function search(){
         }
       }
     }
-    if(!raw.length){
-      // 免费兜底：Agnes知识生成（用LLM训练数据生成合理优惠）
-      setSearchProgress("正在生成智能推荐…");
-      const kb=await agnesKnowledgeGenerate(term);
-      if(kb.length){
-        raw=verifyDeals(kb,"AI知识库",term);
-        lastEngines.push("agnes-knowledge");
-      }
-    }
     if(!raw.length)throw new Error("empty");
-    lastCards=raw;render(applySort(raw));afterRender();
   }catch(e){
     $("#grid").innerHTML="";
     if(e.message==="no-source"){
       $("#notice").style.display="block";
-      $("#notice").textContent="⚠️ 该城市/场景暂未检索到优惠源，换个地区或场景试试。";
+      $("#notice").textContent="⚠️ 未检索到数据：纯网页版受浏览器跨域限制，直连搜索源会被拦截。请先双击『启动聚优惠服务.cmd』启动本地后端，本页将自动切换并重新搜索。";
     }else if(lastApiError&&lastApiError.step==='network'){
       // file:// 跨域被拦 → 引导启动本地后端（双模 fallback）
       showBackendBanner();
@@ -1252,8 +1336,7 @@ document.querySelectorAll("#sort span[data-s]").forEach(s=>s.addEventListener("c
   document.querySelectorAll("#sort span[data-s]").forEach(x=>x.classList.remove("on"));
   s.classList.add("on");state.sort=s.dataset.s;search();
 }));
-bind("#go","click",()=>{ search(); });   // resolveTerm 自动优先用搜索框关键词，不再强制映射到类别
-bind("#kw","keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("#go").click();}});
+bind("#go","click",()=>{ search(); });   // 搜索词由品类按钮决定（输入框已移除）
 
 /* ============ 备用工具：弹窗 + CLI 导入（对标校招雷达）============ */
 function showToolHelp(){$("#toolModal").classList.add("show");}

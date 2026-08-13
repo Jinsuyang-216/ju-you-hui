@@ -51,7 +51,7 @@ function whichCli(cmd) {
   return CLI_CACHE[cmd];
 }
 
-/* 用子进程跑 CLI，捕获 stdout，带超时 */
+/* 用子进程跑 CLI，捕获 stdout，带超时（超时强制 SIGKILL，避免僵尸进程） */
 function runCli(cmd, args, timeoutMs) {
   return new Promise((resolve) => {
     let out = "", done = false;
@@ -59,7 +59,14 @@ function runCli(cmd, args, timeoutMs) {
     let proc;
     try { proc = spawn(cmd, args, { shell: process.platform === "win32" }); }
     catch (e) { return finish(null); }
-    const t = setTimeout(() => { try { proc.kill(); } catch (e) {} finish(null); }, timeoutMs);
+    const t = setTimeout(() => {
+      try {
+        // 进程树强杀：避免 Scrapling 的 python→浏览器 子进程残留堆积（曾致 8GB 内存爆满、电脑卡死）
+        if (process.platform === "win32") { require("child_process").spawnSync("taskkill", ["/F", "/T", "/PID", String(proc.pid)], { stdio: "ignore" }); }
+        else { proc.kill("SIGKILL"); }
+      } catch (e) {}
+      finish(null);
+    }, timeoutMs);
     proc.stdout.on("data", (c) => (out += c));
     proc.stderr.on("data", () => {});
     proc.on("error", () => { clearTimeout(t); finish(null); });
@@ -247,6 +254,44 @@ async function firecrawlSearch(query, keys) {
   catch (e) { return []; }
 }
 
+/* ---- 免key免费层：Firecrawl CLI search（官方 keyless，2026-08-12 实测可用；限速，仅兜底）---- */
+async function firecrawlCliSearch(query) {
+  const out = await runCli("npx", ["-y", "firecrawl-cli@latest", "search", query, "--limit", "5", "--country", "CN"], 90000);
+  if (!out || out.length < 50) return [];
+  const items = [];
+  for (const b of out.split(/\n\s*\n/)) {
+    const m = b.match(/^(.+?)\n\s*URL:\s*(\S+)([\s\S]*)$/);
+    if (!m) continue;
+    items.push({ title: m[1].trim(), url: m[2], description: (m[3] || "").replace(/^\s+/gm, "").trim() });
+  }
+  return items;
+}
+/* ---- 免key免费层：Firecrawl CLI scrape（官方 keyless，实测可用；限速，仅兜底）---- */
+async function firecrawlCliScrape(targetUrl) {
+  const out = await runCli("npx", ["-y", "firecrawl-cli@latest", "scrape", targetUrl], 90000);
+  return (out && out.length > 200) ? out : null;
+}
+
+/* ---- 免key免费层：Scrapling 浏览器级反爬抓取（StealthyFetcher，实测 Bing 可用；依赖 venv juyou-scrapling）---- */
+const SCRAPLING_PY = "C:/Users/user/.workbuddy/binaries/python/envs/juyou-scrapling/Scripts/python.exe";
+const SCRAPLING_SCRIPT = path.join(ROOT, "scrapling_fetch.py");
+async function scraplingFetch(targetUrl) {
+  const out = await runCli(SCRAPLING_PY, [SCRAPLING_SCRIPT, targetUrl], 20000);
+  if (!out || out.startsWith("ERROR:") || out.length < 300) return null;
+  return out;
+}
+
+/* ---- Wigolo 本地搜索引擎（localhost:3333，主选；未运行时自动失败降级）---- */
+async function wigoloSearch(query, keys) {
+  try {
+    const r = await httpsPostJson(WIGOLO_ENDPOINT, { query, max_results: 5 }, {}, 2000);
+    if (r.status !== 200) return [];
+    const j = JSON.parse(r.body);
+    if (Array.isArray(j)) return j;
+    return Array.isArray(j.results) ? j.results : (Array.isArray(j.data) ? j.data : []);
+  } catch (e) { return []; }
+}
+
 /* ---- ① 第一备用：AnySearch（云端统一搜索/抽取，免 API Key 可匿名用）---- */
 async function anysearchCall(toolName, arguments_, keys) {
   const key = (keys && keys.anysearch) || ANYSEARCH_KEY;
@@ -392,10 +437,6 @@ async function scrapeOneWithFallback(q, keys) {
       return { text, source: q.name, engine: "wigolo-search" };
     }
 
-    // 免费层②：Bing直抓搜索引擎结果（无需API Key）
-    const bingText = await hardTimeout(bingDirectFetch(q.query).catch(() => null), 25000, null);
-    if (bingText) return { text: bingText.text, source: bingText.source, engine: "bing-direct" };
-
     // 备用③：AnySearch 通用搜索（云端免费，匿名可用，无需安装本地CLI）
     const asText = await hardTimeout(anysearchSearch(q.query, keys).catch(() => null), 30000, null);
     if (asText) return { text: asText, source: "AnySearch", engine: "anysearch-search" };
@@ -405,6 +446,13 @@ async function scrapeOneWithFallback(q, keys) {
     if (fcItems.length) {
       const text = fcItems.map(it => `标题：${it.title || ""}\n摘要：${it.description || ""}\n链接：${it.url || ""}`).join("\n\n");
       return { text, engine: "firecrawl-search" };
+    }
+
+    // 免key兜底④：Firecrawl CLI 免费层（官方 keyless，限速，仅兜底）
+    const cliItems = await hardTimeout(firecrawlCliSearch(q.query).catch(() => []), 60000, []);
+    if (cliItems.length) {
+      const text = cliItems.map(it => `标题：${it.title || ""}\n摘要：${it.description || ""}\n链接：${it.url || ""}`).join("\n\n");
+      return { text, engine: "firecrawl-cli" };
     }
     return null;
   }
@@ -418,9 +466,17 @@ async function scrapeOneWithFallback(q, keys) {
   md = await hardTimeout(anysearchExtract(q.url, keys).catch(() => null), 30000, null);
   if (md && md.length > 200) return { text: md, engine: "anysearch-extract" };
 
+  // 免key免费层②b：Scrapling 浏览器级抓取（动态页/反爬页，实测可用）
+  md = await hardTimeout(scraplingFetch(q.url).catch(() => null), 60000, null);
+  if (md && md.length > 200) return { text: md, engine: "scrapling" };
+
   // 付费层③：Firecrawl /v1/scrape
   md = await hardTimeout(firecrawlScrape(q.url, keys).catch(() => null), 40000, null);
   if (md && md.length > 200) return { text: md, engine: "firecrawl" };
+
+  // 免key兜底③：Firecrawl CLI scrape（官方 keyless，限速，仅兜底）
+  md = await hardTimeout(firecrawlCliScrape(q.url).catch(() => null), 60000, null);
+  if (md && md.length > 200) return { text: md, engine: "firecrawl-cli" };
 
   // 付费层③：BrowserAct
   md = await hardTimeout(browserActExtract(q.url).catch(() => null), 65000, null);
@@ -447,6 +503,16 @@ function tagAndSortRegion(deals, city, county) {
   return deals;
 }
 
+/* ---- 并发限制工具：最多 limit 个同时执行 ---- */
+async function mapLimit(arr, limit, fn) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += limit) {
+    const chunk = arr.slice(i, i + limit);
+    out.push(...(await Promise.all(chunk.map(fn))));
+  }
+  return out;
+}
+
 /* ---- 搜索主流程（并行 + 全局兜底） ---- */
 async function doSearch(payload) {
   const city = payload.city || "全国";
@@ -470,11 +536,11 @@ async function doSearch(payload) {
         55000, []
       );
       return verifyDeals(deals, q.name, category);
-    } catch (e) { return []; }
+    } catch (e) { console.log("[runQuery] 引擎失败:", e.message); return []; }
   }
-  let raw = (await Promise.all(primary.map(runQuery))).reduce((a, b) => a.concat(b), []);
+  let raw = (await mapLimit(primary, 3, runQuery)).reduce((a, b) => a.concat(b), []);
   if (raw.length < 3 && fb.length) {
-    raw = raw.concat((await Promise.all(fb.map(runQuery))).reduce((a, b) => a.concat(b), []));
+    raw = raw.concat((await mapLimit(fb, 3, runQuery)).reduce((a, b) => a.concat(b), []));
   }
 
   // ③ 若所有数据源颗粒无收，Agnes知识生成兜底（用LLM训练数据生成合理优惠）
@@ -489,6 +555,20 @@ async function doSearch(payload) {
     for (const qv of variants) {
       const cliDeals = await hardTimeout(opencliExtract(qv).catch(() => []), 40000, []);
       if (cliDeals.length) { enginesUsed.add("opencli"); raw = raw.concat(verifyDeals(cliDeals, "OpenCLI", category)); break; }
+    }
+  }
+
+  // ⑤ Scrapling 浏览器兜底（全局仅 1 次：抓 Bing 搜索页。注意：绝不在每个源里触发 scrapling，
+  //    否则多个浏览器进程堆积会把 8GB 内存占满导致电脑卡死崩溃——2026-08-13 实测事故）
+  if (raw.length === 0) {
+    const pq = (primary[0] && primary[0].query) || `${category} ${city} 优惠券`;
+    const spText = await hardTimeout(
+      scraplingFetch("https://www.bing.com/search?q=" + encodeURIComponent(pq + " 优惠券 团购 代金券")).catch(() => null),
+      30000, null
+    );
+    if (spText) {
+      const spDeals = await hardTimeout(agnesExtract(spText, "Bing搜索", category, city, keys, kws).catch(() => []), 50000, []);
+      if (spDeals.length) { enginesUsed.add("scrapling-bing"); raw = raw.concat(verifyDeals(spDeals, "Bing搜索", category)); }
     }
   }
 
@@ -536,7 +616,10 @@ const server = http.createServer(async (req, res) => {
   }
   if (u.pathname === "/api/search" && req.method === "POST") {
     let body = "";
-    req.on("data", (c) => (body += c));
+    req.on("data", (c) => {
+      body += c;
+      if (body.length > 1e6) { req.destroy(); res.writeHead(413); res.end(JSON.stringify({ error: "请求体过大" })); return; }
+    });
     req.on("end", async () => {
       try {
         const payload = JSON.parse(body || "{}");
