@@ -771,6 +771,16 @@ async function runQueryText(q){
     // 备用②：AnySearch 云端搜索（无 CORS 头，浏览器直连会被拦，仅作尝试）
     const anysearch=await anysearchSearch(q.query);
     if(anysearch)return {text:anysearch,source:"AnySearch",sourceId:q.id,fallback:q.fallback,engine:"anysearch-search"};
+    // 备用③：Agnes AI 知识生成兜底（agnes 端点 CORS 放行，在线直连可用；返回 AI 参考优惠）
+    const aiDeals=await agnesKnowledgeGenerate(q.query);
+    if(aiDeals&&aiDeals.length){
+      const text=aiDeals.map(d=>`标题：${d.title||""}
+摘要：${[d.merchant,d.amount,d.source,d.address].filter(Boolean).join(" ")}
+链接：${d.link||""}`).join("
+
+");
+      return {text,source:q.name,sourceId:q.id,fallback:q.fallback,engine:"agnes-ai"};
+    }
     return null;
   }
   // scrape类型
