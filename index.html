@@ -1315,7 +1315,7 @@ async function renderMap(cards){
 }
 
 /* ============ 事件绑定（逐项容错，避免单点失败中断整段） ============ */
-function bind(id,ev,fn){const el=$(id);if(el)el.addEventListener(ev,fn);}
+function bind(id,ev,fn){const _b=()=>{const el=$(id);if(el)el.addEventListener(ev,fn);};if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",_b);}else{_b();}}
 bind("#regionTrigger","click",openSheet);
 bind("#sheetMask","click",closeSheet);
 bind("#sheetClose","click",closeSheet);
