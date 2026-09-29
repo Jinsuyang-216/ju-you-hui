@@ -804,7 +804,7 @@ async function searchDeals(){
   const primary=queries.filter(q=>!q.fallback);
   const fb=queries.filter(q=>q.fallback);
   // 纯前端限流：Firecrawl 免 key 层限速，只跑前 6 个关键源 + 每次 2 并发，避免 14 源全并发被 429
-  const run=q=>runQueryText(q).then(t=>t?{text:t,source:q.name,sourceId:q.id,fallback:q.fallback}:null);
+  const run=q=>runQueryText(q).then(t=>t?{...t,source:q.name,sourceId:q.id,fallback:q.fallback}:null);
   let res=(await mapLimit(primary.slice(0,6),2,run)).filter(Boolean);
   if(res.length<3 && fb.length){
     res=res.concat((await mapLimit(fb.slice(0,3),2,run)).filter(Boolean));
@@ -1177,7 +1177,7 @@ async function search(){
     // 美团强制第一（用户要求：先定向搜美团，10 秒内必出美团信息）
     const ordered=[...primary].sort((a,b)=>(a.name==="美团外卖"?-1:b.name==="美团外卖"?1:0)).slice(0,6);
     setSearchProgress(`正在检索（美团/饿了么优先，10 秒内出结果）…`);
-    const run=q=>runQueryText(q).then(t=>t?{text:t,source:q.name,sourceId:q.id,fallback:q.fallback}:null);
+    const run=q=>runQueryText(q).then(t=>t?{...t,source:q.name,sourceId:q.id,fallback:q.fallback}:null);
     let raw=[], rendered=false, aiRendered=false;
     // 10 秒保底：全部搜索引擎失效时，10 秒后立即用 agnes 兜底（虚拟优惠 + 明确提示；真实结果到了自动替换）
     const guard=setTimeout(async ()=>{
